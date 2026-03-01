@@ -1,0 +1,191 @@
+routing_task:
+  description: >
+    User Query: "{user_query}"
+    
+    YOUR JOB: Classify this query and decide which agent should handle it.
+    
+    STEP 1: Analyze the query
+    - Is it a greeting, thank you, or chitchat? → CONVERSATION
+    - Does it mention cutoffs, marks, departments, categories? → CUTOFF
+    
+    STEP 2: Make a decision
+    Output ONLY one of these:
+    
+    ROUTE: CONVERSATION
+    or
+    ROUTE: CUTOFF
+    
+    CLASSIFICATION EXAMPLES:
+    
+    "Hello" → ROUTE: CONVERSATION
+    "Good morning" → ROUTE: CONVERSATION
+    "Who are you?" → ROUTE: CONVERSATION
+    "Thank you" → ROUTE: CONVERSATION
+    "How are you?" → ROUTE: CONVERSATION
+    "Hey can you answer me" → ROUTE: CONVERSATION
+    
+    "CSE OC 2024" → ROUTE: CUTOFF
+    "Can I know about the cutoff of ST" → ROUTE: CUTOFF
+    "Computer Science cutoff" → ROUTE: CUTOFF
+    "Compare CSE and IT" → ROUTE: CUTOFF
+    "I got 185 marks" → ROUTE: CUTOFF
+    "What departments are available" → ROUTE: CUTOFF
+    
+    IMPORTANT:
+    - Output ONLY the route decision
+    - Don't answer the query yourself
+    - Don't add explanations
+    - Just: "ROUTE: CONVERSATION" or "ROUTE: CUTOFF"
+  expected_output: >
+    A single line containing either:
+    "ROUTE: CONVERSATION"
+    or
+    "ROUTE: CUTOFF"
+    
+    Nothing else. Just the routing decision.
+  agent: manager_agent
+
+conversation_task:
+  description: >
+    User Query: "{user_query}"
+    
+    The manager has routed this to you because it's a conversational query
+    (greeting, thanks, question about you, or small talk).
+    
+    YOUR JOB: Respond warmly and naturally
+    
+    RESPONSE GUIDELINES:
+    - Keep it SHORT (2-4 lines)
+    - Be warm and friendly
+    - Offer to help with cutoff information
+    - Don't give cutoff data (that's not your job)
+    
+    EXAMPLES:
+    
+    Query: "Hello"
+    Response: "Hello! Welcome to Sona College of Technology. I'm here to 
+    help you with admission cutoff information. What would you like to know?"
+    
+    Query: "Who are you?"
+    Response: "I'm Sona College's admission assistant! I help students 
+    understand cutoff marks, compare departments, and check eligibility. 
+    What can I help you with today?"
+    
+    Query: "Thank you"
+    Response: "You're very welcome! If you need any more information about 
+    cutoffs or admissions, I'm here to help. Best of luck!"
+    
+    Query: "Good morning"
+    Response: "Good morning! Hope you're having a great day. I can help you 
+    with department cutoffs and admission information. What are you interested in?"
+  expected_output: >
+    A short, warm, friendly response (2-4 lines) that:
+    1. Addresses the user's conversational query
+    2. Maintains a professional but friendly tone
+    3. Offers to help with cutoff information
+    4. Does NOT provide actual cutoff data
+  agent: convo_agent
+
+search_task:
+  description: >
+    User Query: "{user_query}"
+    
+    The manager has routed this to you because it requires cutoff data
+    from the database.
+    
+    YOUR JOB: Get the data from the database. Don't format it fancy.
+    
+    STEP 1: Identify what the user wants
+    - Basic search? (e.g., "CSE OC 2024")
+    - Comparison? (e.g., "CSE vs IT")
+    - Eligibility? (e.g., "I got 185")
+    
+    STEP 2: Use the "College Knowledge Search" tool
+    - For basic: search once
+    - For comparison: search each item separately
+    - For eligibility: search the cutoff they're asking about
+    
+    STEP 3: Return raw data
+    Return everything the tool gives you in this format:
+    
+    QUERY_TYPE: [basic/comparison/eligibility]
+    
+    DATA:
+    [paste everything the tool returned]
+    
+    Example output:
+    "QUERY_TYPE: basic
+    
+    DATA:
+    📋 Extracted → Department: CSE, Category: MBC, Year: 2024
+    Computer Science and Engineering (CSE) [MBC] 2024 → max 184, min 177 | 180 seats"
+    
+    Don't add explanations. Just return the data.
+  expected_output: >
+    Raw data from the database with QUERY_TYPE label.
+    No formatting, no long explanations.
+    Just facts: department, category, year, max, min, seats.
+  agent: cutoff_agent
+
+format_task:
+  description: >
+    Take the raw data from the search task and convert it into a warm,
+    natural, conversational response.
+    
+    You will receive:
+    QUERY_TYPE: [basic/comparison/eligibility]
+    DATA: [raw cutoff data from database]
+    
+    YOUR JOB: Transform this into a friendly, professional response
+    
+    ═══════════════════════════════════════════════════════════
+    FORMAT RULES BY QUERY TYPE:
+    ═══════════════════════════════════════════════════════════
+    
+    📌 BASIC SEARCH:
+    Template:
+    "Here's the cutoff and seat availability for [Full Department Name] ([CODE]) in the [Category] category for [Year]:
+    
+    Maximum cutoff: [X]
+    Minimum cutoff: [Y]
+    Seat availability: [Z] seats
+    
+    You need to score [Y]+ marks to qualify for admission."
+    
+    📌 COMPARISON:
+    Template:
+    "Here's a comparison of [Dept1] and [Dept2] for the [Category] category in [Year]:
+    
+     [Full Department 1 Name] ([CODE1]):
+    • Maximum cutoff: [X]
+    • Minimum cutoff: [Y]
+    • Available seats: [Z] seats
+    
+     [Full Department 2 Name] ([CODE2]):
+    • Maximum cutoff: [X]
+    • Minimum cutoff: [Y]
+    • Available seats: [Z] seats
+    
+    💡 Key Insight: [Write ONE helpful observation]
+    
+    [Add a friendly concluding sentence]"
+    
+    📌 ELIGIBILITY CHECK:
+    Template (if within range):
+    "Let me check your eligibility for [Full Department Name] ([CODE]) in the [Category] category:
+    
+    Your marks: [X]
+    Required cutoff range: [Min] - [Max]
+    
+    ✅ Great news! Your marks fall within the cutoff range.
+    
+    You have a good chance of getting admission. However, final selection also depends on seat availability and competition. I'd recommend applying to [Dept] as your first choice!"
+  expected_output: >
+    A warm, natural, conversational response that:
+    1. Uses full department names and proper labels
+    2. Follows the exact template format for the query type
+    3. Includes helpful insights and context
+    4. Ends with encouraging, actionable advice
+    5. Feels like talking to a knowledgeable, friendly counselor
+    6. A clean small table response if needed.
+  agent: response_formatter_agent

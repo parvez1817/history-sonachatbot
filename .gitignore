@@ -1,0 +1,32 @@
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Databases & Vector Stores (Specific to your project)
+qdrant_local_db/
+knowledge/
+
+# Python internal files
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / Build
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Keep pyproject.toml and uv.lock, but ignore temporary build artifacts
+.python-version
+
