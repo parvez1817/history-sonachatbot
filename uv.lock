@@ -1355,6 +1355,28 @@ wheels = [
 ]
 
 [[package]]
+name = "litellm"
+version = "1.75.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "click" },
+    { name = "httpx" },
+    { name = "importlib-metadata" },
+    { name = "jinja2" },
+    { name = "jsonschema" },
+    { name = "openai" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "tiktoken" },
+    { name = "tokenizers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/98/ea40c48fda5121af00e44c9c6d01a0cd8cb9987bb0ce91c6add917d9db9d/litellm-1.75.3.tar.gz", hash = "sha256:a6a0f33884f35a9391a9a4363043114d7f2513ab2e5c2e1fa54c56d695663764", size = 10104437, upload-time = "2025-08-08T14:58:09.423Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/1e/8ef7e7ac7d33f900ae44e9e3a33d668783034e414aa4d7191ae3e4068ec5/litellm-1.75.3-py3-none-any.whl", hash = "sha256:0ff3752b1f1c07f8a4b9a364b1595e2147ae640f1e77cd8312e6f6a5ca0f34ec", size = 8870578, upload-time = "2025-08-08T14:58:06.766Z" },
+]
+
+[[package]]
 name = "lxml"
 version = "6.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3289,6 +3311,7 @@ source = { editable = "." }
 dependencies = [
     { name = "crewai", extra = ["google-genai", "tools"] },
     { name = "fastapi" },
+    { name = "litellm" },
     { name = "pymongo" },
     { name = "python-multipart" },
     { name = "qdrant-client" },
@@ -3299,6 +3322,7 @@ dependencies = [
 requires-dist = [
     { name = "crewai", extras = ["google-genai", "tools"], specifier = "==1.8.1" },
     { name = "fastapi", specifier = ">=0.100.0" },
+    { name = "litellm", specifier = ">=1.75.3" },
     { name = "pymongo", specifier = ">=4.16.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "qdrant-client", specifier = ">=1.17.0" },
