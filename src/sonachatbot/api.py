@@ -2,7 +2,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import os
 import time
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -93,28 +93,16 @@ class ChatFlowAPI(Flow):
         self.answer = ""
 
     def process_query(self, user_query: str) -> str:
-        """
-        Process a user query through the CrewAI flow and return the answer.
-        
-        Args:
-            user_query: The user's question/query
-            
-        Returns:
-            The AI-generated response
-        """
         self.user_query = user_query
         self.route = ""
         self.answer = ""
         
         try:
-            # Step 1: Route the query
             route = self._route_query()
             
-            # Step 2: Execute the selected crew
             if route == "error":
                 return "I encountered an error while processing your request. Please try again."
             
-            # Step 3: Get the answer based on route
             if route == "convo":
                 result = self._safe_kickoff(self.crew_factory.crew_b_convo())
             else:
@@ -131,10 +119,8 @@ class ChatFlowAPI(Flow):
             return f"I encountered an error: {str(e)}"
 
     def _route_query(self) -> str:
-        """Route the query using Crew A (Router)."""
         try:
             result = self._safe_kickoff(self.crew_factory.crew_a_router())
-            
             if not result:
                 return "error"
             
@@ -143,48 +129,41 @@ class ChatFlowAPI(Flow):
                 return "convo"
             else:
                 return "cutoff"
-                
         except Exception as e:
             print(f"Routing error: {e}")
             return "error"
 
     def _safe_kickoff(self, crew, retry_count=0):
-        """Handles Rate Limits and Daily Token Limits gracefully."""
         MAX_RETRIES = 3
         try:
             return crew.kickoff(inputs={"user_query": self.user_query})
         except Exception as e:
             error_msg = str(e).lower()
-            
-            # Check for Daily Token Limit
             if "tokens per day" in error_msg or "tpd" in error_msg:
                 print("\n🛑 DAILY TOKEN LIMIT REACHED on Groq!")
-                print("Switch to Llama-3.1-8b-instant or wait for the reset.")
                 return None 
 
-            # Check for Rate Limit (429)
             if "429" in error_msg and retry_count < MAX_RETRIES:
                 wait_time = 7 * (retry_count + 1)
-                print(f"⚠️  Rate limit hit! Cooling down for {wait_time}s... (Attempt {retry_count + 1}/{MAX_RETRIES})")
+                print(f"⚠️ Rate limit hit! Cooling down for {wait_time}s...")
                 time.sleep(wait_time)
                 return self._safe_kickoff(crew, retry_count + 1)
             
-            # Rethrow other errors
-            print(f"\n❌ Execution Error: {e}")
             raise e
 
 
 # =========================
-# GLOBAL INSTANCE (Reusable)
+# GLOBAL INSTANCE
 # =========================
-# Create a singleton instance that can be reused across requests
 chat_flow = ChatFlowAPI()
 
 
 # =========================
 # API ENDPOINTS
 # =========================
-@app.get("/")
+
+# Modified to handle HEAD requests (common for health checks/Render pings)
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     """Root endpoint returning API info."""
     return {
@@ -197,24 +176,26 @@ def root():
         }
     }
 
-
-@app.get("/health")
+# Added HEAD method to prevent 405 on health monitoring
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
 
+# Silences the 404 logs for favicon.ico requests from browsers
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(content="", media_type="image/x-icon")
+
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-
     if not request.message or not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     try:
-        # 🔥 Process query
         response = chat_flow.process_query(request.message)
 
-        # 🔥 Store in MongoDB
         chat_document = {
             "user_query": request.message,
             "bot_response": response,
@@ -225,7 +206,6 @@ def chat(request: ChatRequest):
             chats_collection.insert_one(chat_document)
         except Exception as db_error:
             print(f"Database error: {db_error}")    
-            
 
         return ChatResponse(
             response=response,
@@ -239,17 +219,9 @@ def chat(request: ChatRequest):
         )
 
 # =========================
-# RUN FUNCTION (for Uvicorn)
+# RUN FUNCTION
 # =========================
 def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
-    """
-    Run the FastAPI server.
-    
-    Args:
-        host: Host to bind to
-        port: Port to bind to
-        reload: Enable auto-reload
-    """
     import uvicorn
     uvicorn.run(
         "sonachatbot.api:app",
@@ -261,4 +233,3 @@ def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
 
 if __name__ == "__main__":
     run_server()
-
